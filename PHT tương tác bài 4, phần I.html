@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phiếu Học Tập Tương Tác</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #fff0f5; /* Soft pastel pink background */
+            background-image: radial-gradient(#ffd1dc 2px, transparent 2px);
+            background-size: 30px 30px;
+        }
+
+        /* Drag and Drop Styles */
+        .draggable-item {
+            cursor: grab;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy transition */
+            user-select: none;
+        }
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(0.95) rotate(-2deg);
+        }
+        .drop-zone {
+            transition: all 0.2s ease;
+        }
+        .drop-zone.drag-over {
+            background-color: #fef08a !important; /* Yellow-200 */
+            border-color: #eab308 !important; /* Yellow-500 */
+            transform: scale(1.02);
+        }
+        /* Ensure items inside tiny drop zones center properly */
+        .drop-zone:not(.pool-zone) {
+            display: flex;
+            align-items: center;
+            justify-center: center;
+        }
+        .drop-zone:not(.pool-zone) .draggable-item {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: none;
+            border: none;
+            border-radius: 6px;
+        }
+
+        /* Custom Radio Buttons */
+        .custom-radio input[type="radio"] {
+            display: none;
+        }
+        .custom-radio label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 12px 16px;
+            border-radius: 16px;
+            border: 2px solid #fbcfe8; /* Pink-200 */
+            background-color: white;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 4px 0 0 #fbcfe8;
+        }
+        .custom-radio label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 0 #fbcfe8;
+        }
+        .custom-radio label:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 0 #fbcfe8;
+        }
+        .custom-radio input[type="radio"]:checked + label {
+            border-color: #ec4899; /* Pink-500 */
+            background-color: #fdf2f8; /* Pink-50 */
+            box-shadow: 0 4px 0 0 #ec4899;
+            font-weight: 700;
+            color: #be185d;
+        }
+        .radio-circle {
+            transition: all 0.2s ease;
+        }
+        .custom-radio input[type="radio"]:checked + label .radio-circle {
+            background-color: #ec4899;
+            color: white;
+            border-color: #ec4899;
+        }
+        
+        /* Select Dropdown */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ec4899%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem top 50%;
+            background-size: 0.8rem auto;
+            border-radius: 20px;
+            padding-right: 2rem !important;
+        }
+
+        /* Result Animations */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .modal-animate {
+            animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Tap to Move Effect for Mobile */
+        .tap-selected {
+            box-shadow: 0 0 0 4px #ec4899, 0 8px 15px rgba(236, 72, 153, 0.4) !important;
+            transform: scale(1.05) translateY(-4px) !important;
+            border-color: #ec4899 !important;
+            z-index: 20;
+            position: relative;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.6); }
+            100% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+        }
+        .tap-selected {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        /* True/False Custom Styles */
+        .tf-radio input[type="radio"] { display: none; }
+        .tf-label-true, .tf-label-false {
+            display: flex; align-items: center; justify-content: center;
+            padding: 10px 24px; border-radius: 9999px; font-weight: 800; font-size: 1.125rem;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 2px solid transparent; background-color: white; user-select: none;
+        }
+        /* Unselected states */
+        .tf-label-true { border-color: #a7f3d0; color: #047857; box-shadow: 0 4px 0 0 #a7f3d0; }
+        .tf-label-false { border-color: #fecdd3; color: #be123c; box-shadow: 0 4px 0 0 #fecdd3; }
+        
+        /* Selected states (nổi lên và màu đậm) */
+        .tf-radio input[type="radio"][value="true"]:checked + label {
+            background-color: #10b981; border-color: #047857; color: white;
+            transform: translateY(-4px); box-shadow: 0 8px 0 0 #047857;
+        }
+        .tf-radio input[type="radio"][value="false"]:checked + label {
+            background-color: #e11d48; border-color: #9f1239; color: white;
+            transform: translateY(-4px); box-shadow: 0 8px 0 0 #9f1239;
+        }
+
+        /* Grading overrides for True/False */
+        .tf-radio label.graded-correct { background-color: #10b981 !important; border-color: #047857 !important; color: white !important; box-shadow: 0 4px 0 0 #047857 !important;}
+        .tf-radio label.graded-wrong { background-color: #e11d48 !important; border-color: #9f1239 !important; color: white !important; box-shadow: 0 4px 0 0 #9f1239 !important;}
+        
+        /* Correct/Incorrect highlighting */
+        .correct-answer { border-color: #10b981 !important; background-color: #d1fae5 !important; box-shadow: 0 4px 0 0 #10b981 !important; color: #065f46 !important;}
+        .wrong-answer { border-color: #ef4444 !important; background-color: #fee2e2 !important; box-shadow: 0 4px 0 0 #ef4444 !important; color: #991b1b !important;}
+        
+        /* Button 3D effect */
+        .btn-3d {
+            transition: all 0.1s ease;
+            box-shadow: 0 6px 0 0 #c026d3; /* Fuchsia-600 */
+        }
+        .btn-3d:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 0 #c026d3;
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 0 #c026d3;
+        }
+    </style>
+</head>
+<body class="text-gray-800 pb-20">
+
+    <div class="max-w-4xl mx-auto pt-8 px-4 sm:px-6 lg:px-8">
+        
+        <!-- Header Section -->
+        <header id="header-container" class="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 text-white rounded-t-[2.5rem] p-8 text-center shadow-lg relative overflow-hidden border-4 border-b-0 border-white">
+            <div class="absolute top-[-20px] left-[-20px] text-6xl opacity-20 transform rotate-12">🌸</div>
+            <div class="absolute bottom-[-10px] right-[10px] text-7xl opacity-20 transform -rotate-12">✨</div>
+            
+            <h1 id="main-title" class="text-2xl font-black tracking-wider mb-2 relative z-10 drop-shadow-md"></h1>
+            <h2 id="sub-title" class="text-3xl sm:text-4xl font-extrabold relative z-10 drop-shadow-lg text-yellow-200"></h2>
+            
+            <div class="mt-8 flex flex-wrap justify-center gap-4 relative z-10 text-base font-bold">
+                <div class="bg-white/20 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center shadow-inner border border-white/30">
+                    <i class="fas fa-child-reaching mr-2 text-yellow-200 text-xl"></i> 
+                    Tên/Nhóm: 
+                    <input type="text" class="ml-2 bg-transparent border-b-2 border-white/50 focus:border-white outline-none w-48 placeholder-white/60 font-bold" placeholder="Nhập tên nha...">
+                </div>
+                <div class="bg-white/20 backdrop-blur-sm px-5 py-3 rounded-2xl flex items-center shadow-inner border border-white/30">
+                    <i class="fas fa-school mr-2 text-yellow-200 text-xl"></i> 
+                    Lớp: 
+                    <input type="text" class="ml-2 bg-transparent border-b-2 border-white/50 focus:border-white outline-none w-24 placeholder-white/60 font-bold text-center" placeholder="...">
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content area -->
+        <main id="worksheet-content" class="bg-white/90 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.1)] rounded-b-[2.5rem] p-6 sm:p-10 space-y-12 border-4 border-t-0 border-white relative z-20">
+            <!-- Sections will be injected here -->
+        </main>
+
+        <!-- Submit Button -->
+        <div class="mt-12 text-center">
+            <button id="btn-submit" onclick="gradeWorksheet()" class="btn-3d bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-black text-xl sm:text-2xl px-10 py-5 rounded-full uppercase tracking-wider flex items-center justify-center mx-auto gap-3">
+                <i class="fas fa-paper-plane"></i> NỘP BÀI THÔI! ✨
+            </button>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="result-modal" class="fixed inset-0 bg-indigo-900/40 hidden flex items-center justify-center z-50 px-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-[2rem] shadow-2xl p-8 max-w-md w-full modal-animate text-center border-8 border-pink-200 relative overflow-hidden">
+            <div class="absolute -top-10 -left-10 text-8xl opacity-10">🎉</div>
+            <div class="absolute -bottom-10 -right-10 text-8xl opacity-10">🎈</div>
+            
+            <div id="result-icon" class="text-7xl mb-4 relative z-10 drop-shadow-md"></div>
+            <h3 class="text-3xl font-black mb-2 text-pink-500 uppercase tracking-wide relative z-10">Kết Quả Của Bạn</h3>
+            
+            <div class="bg-pink-50 rounded-2xl py-4 my-6 relative z-10 border-2 border-pink-100 border-dashed">
+                <p class="text-sm font-bold text-gray-500 uppercase mb-1">Số điểm đạt được</p>
+                <p id="result-score" class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600"></p>
+            </div>
+            
+            <p id="result-message" class="text-lg font-bold text-gray-600 mb-8 relative z-10"></p>
+            
+            <button onclick="closeModal()" class="bg-gray-800 text-white font-bold text-lg px-8 py-4 rounded-xl hover:bg-gray-700 w-full transition-colors relative z-10 shadow-lg flex justify-center items-center gap-2">
+                <i class="fas fa-redo"></i> Xem lại bài làm
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const lessonData = {
+            header: {
+                title: "🌸 PHIẾU HỌC TẬP SỐ 1 🌸",
+                subtitle: "SỬ DỤNG VÀ BẢO VỆ ĐẤT TRỒNG"
+            },
+            dragDrop: {
+                title: "🍄 PHẦN 1: KÉO THẢ TƯ DUY",
+                description: "Giúp nông dân phân loại các biện pháp nhé! Kéo các thẻ thả vào đúng giỏ NÊN DUY TRÌ hoặc CẦN THAY ĐỔI. ✨",
+                categories: [
+                    { id: "cat1", label: "✅ NÊN DUY TRÌ", colorClass: "text-emerald-700 bg-emerald-50 border-emerald-400" },
+                    { id: "cat2", label: "❌ CẦN THAY ĐỔI", colorClass: "text-rose-700 bg-rose-50 border-rose-400" }
+                ],
+                items: [
+                    { id: "d1", text: "Trồng cây phù hợp với loại đất 🌱", target: "cat1" },
+                    { id: "d2", text: "Trồng liên tục một loại cây nhiều năm 🥀", target: "cat2" },
+                    { id: "d3", text: "Để đất trống vào mùa mưa 🌧️", target: "cat2" },
+                    { id: "d4", text: "Luân canh, trồng xen 🌻", target: "cat1" },
+                    { id: "d5", text: "Che phủ đất, bố trí thời vụ ☀️", target: "cat1" },
+                    { id: "d6", text: "Khai thác cạn kiệt dinh dưỡng 🏜️", target: "cat2" },
+                    { id: "d7", text: "Lạm dụng phân hóa học 🧪", target: "cat2" },
+                    { id: "d8", text: "Bổ sung phân hữu cơ hợp lí 💩", target: "cat1" }
+                ]
+            },
+            situationalMatch: {
+                title: "🧩 PHẦN 2: THỬ TÀI TÌNH HUỐNG",
+                description: "Nhận diện thực tiễn: Đọc tình huống và kéo thẻ [Tên biện pháp] cùng [Ý nghĩa] tương ứng thả vào ô trống nha! 👇",
+                pools: {
+                    methods: {
+                        id: "pool-methods",
+                        title: "🏷️ Tên biện pháp",
+                        items: [
+                            { id: "sm_m1", text: "Luân canh" },
+                            { id: "sm_m2", text: "Trồng xen" },
+                            { id: "sm_m3", text: "Tăng vụ" }
+                        ]
+                    },
+                    meanings: {
+                        id: "pool-meanings",
+                        title: "💡 Ý nghĩa",
+                        items: [
+                            { id: "sm_mn1", text: "Cải tạo đất, giữ ẩm" },
+                            { id: "sm_mn2", text: "Cân bằng dinh dưỡng" },
+                            { id: "sm_mn3", text: "Tránh để đất trống" }
+                        ]
+                    }
+                },
+                situations: [
+                    {
+                        id: "sit1",
+                        text: "👨‍🌾 <strong>Tình huống 1:</strong> Bác An trồng cây lạc (cây họ đậu) vào khoảng trống giữa các hàng ngô trên đất dốc.",
+                        correctMethod: "sm_m2",
+                        correctMeaning: "sm_mn1"
+                    },
+                    {
+                        id: "sit2",
+                        text: "👨‍🌾 <strong>Tình huống 2:</strong> Thay vì trồng lúa liên tục, vụ Xuân Hè chú Bình trồng lúa, vụ Thu Đông chuyển sang trồng ngô trên cùng mảnh ruộng đó.",
+                        correctMethod: "sm_m1",
+                        correctMeaning: "sm_mn2"
+                    },
+                    {
+                        id: "sit3",
+                        text: "👩‍🌾 <strong>Tình huống 3:</strong> Trước đây ruộng nhà cô Hoa để trống trong mùa khô. Nay cô tận dụng thời gian đất nghỉ để gieo thêm 1 vụ rau màu.",
+                        correctMethod: "sm_m3",
+                        correctMeaning: "sm_mn3"
+                    }
+                ]
+            },
+            multipleChoice: {
+                title: "🎯 PHẦN 3: CHINH PHỤC KIẾN THỨC",
+                questions: [
+                    {
+                        id: "q1",
+                        text: "🌟 Câu 1: Hoạt động chung nào của con người là nguyên nhân góp phần làm hình thành các loại đất có yếu tố hạn chế như đất chua, đất mặn, đất bạc màu?",
+                        options: [
+                            { value: "A", text: "A. Áp dụng canh tác chưa hợp lí, khai thác liên tục không hoàn trả dinh dưỡng." },
+                            { value: "B", text: "B. Xây dựng hệ thống đê điều và kênh mương thủy lợi ở đồng bằng." },
+                            { value: "C", text: "C. Trồng cây phân xanh, bón vôi và áp dụng luân canh hợp lí." },
+                            { value: "D", text: "D. Bón phân hữu cơ cân đối và ứng dụng công nghệ cao." }
+                        ],
+                        correct: "A"
+                    },
+                    {
+                        id: "q2",
+                        text: "🌟 Câu 2: Khi áp dụng nguyên tắc 'Chọn cây trồng phù hợp với từng loại đất', cặp cây trồng – loại đất nào sau đây thích hợp với nhau?",
+                        options: [
+                            { value: "A", text: "A. Cây họ đậu – đất mặn." },
+                            { value: "B", text: "B. Cây cói – đất kiềm." },
+                            { value: "C", text: "C. Cây chè – đất chua." },
+                            { value: "D", text: "D. Cây chè – đất mặn." }
+                        ],
+                        correct: "C"
+                    },
+                    {
+                        id: "q3",
+                        text: "🌟 Câu 3: Để bù đắp chất dinh dưỡng và cải tạo đất, cần kết hợp trồng trọt với bón phân hợp lí, đặc biệt ưu tiên nhóm phân nào?",
+                        options: [
+                            { value: "A", text: "A. Phân đạm và phân kali." },
+                            { value: "B", text: "B. Phân chua sinh lí và phân chứa clo." },
+                            { value: "C", text: "C. Phân lân và phân vi lượng." },
+                            { value: "D", text: "D. Phân hữu cơ và phân vi sinh." }
+                        ],
+                        correct: "D"
+                    }
+                ]
+            },
+            trueFalse: {
+                title: "⚖️ PHẦN 4: ĐÚNG HAY SAI?",
+                questions: [
+                    { id: "tf1", text: "Nếu trồng cây trên đất không thích hợp, cây sẽ sinh trưởng chậm, năng suất thấp.", correct: "true" },
+                    { id: "tf2", text: "Quá trình cây trồng lấy đi dinh dưỡng sẽ tự động làm đất trở nên giàu mùn, tơi xốp hơn.", correct: "false" },
+                    { id: "tf3", text: "Ứng dụng mô hình nông nghiệp công nghệ cao giúp nâng cao hiệu quả sử dụng đất trồng.", correct: "true"},
+                    { id: "tf4", text: "Để bảo vệ đất vùng đồi núi dốc, cách tốt nhất là dọn sạch cỏ, để mặt đất trống vào mùa mưa.", correct: "false"}
+                ]
+            },
+            fillBlank: {
+                title: "✍️️ PHẦN 5: ĐIỀN TỪ CÒN THIẾU",
+                hints: "nhất định, hữu cơ, luân canh, bất lợi",
+                sentences: [
+                    { id: "fb1", before: "🌱 1. Mỗi loại cây trồng chỉ thích hợp với một loại đất ", correct: "nhất định", after: " để sinh trưởng tốt nhất." },
+                    { id: "fb2", before: "🪴 2. Cần kết hợp bón phân hợp lí, đặc biệt là bón phân ", correct: "hữu cơ", after: " và bón phân vi sinh để bù đắp dinh dưỡng." },
+                    { id: "fb3", before: "🌾 3. Canh tác bền vững gồm ", correct: "luân canh", after: ", tăng vụ, trồng xen, làm ruộng bậc thang..." },
+                    { id: "fb4", before: "🌦️ 4. Bố trí thời vụ thích hợp để tránh điều kiện ", correct: "bất lợi", after: " do biến đổi khí hậu (hạn, mặn, lũ lụt...)." }
+                ]
+            },
+            summary: {
+                title: "📌 GÓC GHI NHỚ NHO NHỎ",
+                points: [
+                    "<strong>Nguyên tắc sử dụng:</strong> Chọn cây phù hợp với đất; áp dụng luân canh, xen canh, tăng vụ hợp lí. ✅",
+                    "<strong>Bảo vệ & cải tạo:</strong> Hoàn trả dinh dưỡng cho đất, ưu tiên phân bón hữu cơ và phân vi sinh. ♻️",
+                    "<strong>Tránh suy thoái:</strong> Không để đất trống, không khai thác cạn kiệt, tránh lạm dụng hóa chất. 🛡️"
+                ]
+            }
+        };
+
+        const mainContainer = document.getElementById('worksheet-content');
+        
+        function initApp() {
+            renderHeader();
+            renderDragDrop();
+            renderSituationalMatch();
+            renderMultipleChoice();
+            renderTrueFalse();
+            renderFillBlank();
+            renderSummary();
+            
+            // Randomize drag and drop items layout
+            shuffleChildren(document.getElementById('dd-pool'));
+        }
+
+        function renderHeader() {
+            document.getElementById('main-title').textContent = lessonData.header.title;
+            document.getElementById('sub-title').textContent = lessonData.header.subtitle;
+        }
+
+        function createSectionHeader(title, description = '') {
+            let html = `<div class="border-b-4 border-pink-100 pb-4 mb-6 text-center sm:text-left">
+                            <h3 class="text-2xl font-black text-purple-600 tracking-wide uppercase drop-shadow-sm">${title}</h3>`;
+            if (description) {
+                html += `<p class="text-gray-600 mt-2 font-bold text-lg">${description}</p>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        function renderDragDrop() {
+            const data = lessonData.dragDrop;
+            let section = document.createElement('section');
+            
+            let html = createSectionHeader(data.title, data.description + " <br/><span class='text-pink-500 text-sm mt-1 inline-block'>💡 Mẹo: Chạm vào thẻ rồi chạm vào ô tương ứng nếu bạn dùng điện thoại nhé!</span>");
+            
+            // Render Items Pool
+            html += `<div class="mb-8 p-6 bg-blue-50/50 border-4 border-dashed border-blue-200 rounded-[2rem] shadow-inner relative">
+                        <div class="absolute -top-4 left-6 bg-blue-200 text-blue-800 font-bold px-4 py-1 rounded-full text-sm">Kho thẻ (Kéo từ đây) 📥</div>
+                        <div id="dd-pool" class="pool-zone drop-zone flex flex-wrap gap-4 mt-2 justify-center cursor-pointer min-h-[60px]" data-target="pool" data-pool="dd-pool" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" onclick="handleZoneClick(event)">`;
+            
+            data.items.forEach(item => {
+                html += `<div id="${item.id}" class="draggable-item bg-white border-2 border-gray-200 shadow-[0_4px_0_0_#e5e7eb] px-5 py-3 rounded-xl text-base font-bold text-gray-700 hover:border-blue-400 hover:text-blue-600 hover:shadow-[0_4px_0_0_#93c5fd] transition-colors" draggable="true" ondragstart="drag(event)" onclick="handleItemClick(event)" data-correct-target="${item.target}" data-pool="dd-pool">
+                            ${item.text}
+                        </div>`;
+            });
+            html += `</div></div>`;
+
+            // Render Categories
+            html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">`;
+            data.categories.forEach(cat => {
+                html += `
+                    <div class="flex flex-col rounded-[2rem] overflow-hidden border-4 shadow-lg ${cat.colorClass.split(' ').find(c => c.startsWith('border-'))}">
+                        <div class="py-4 font-black text-xl text-center uppercase tracking-wider ${cat.colorClass}">
+                            ${cat.label}
+                        </div>
+                        <div id="${cat.id}-zone" class="drop-zone flex-1 p-6 bg-white/60 flex flex-col gap-4 min-h-[250px] cursor-pointer" data-target="${cat.id}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" onclick="handleZoneClick(event)">
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        function renderSituationalMatch() {
+            const data = lessonData.situationalMatch;
+            let section = document.createElement('section');
+            section.className = "mt-12";
+            
+            let html = createSectionHeader(data.title, data.description + " <br/><span class='text-pink-500 text-sm mt-1 inline-block'>💡 Mẹo: Chạm vào thẻ rồi chạm vào ô tương ứng nếu dùng điện thoại.</span>");
+            
+            // Render Pools
+            html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">`;
+            
+            // Methods Pool
+            html += `<div class="bg-indigo-50 border-4 border-dashed border-indigo-200 rounded-[2rem] p-5 relative">
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-indigo-200 text-indigo-800 font-bold px-4 py-1 rounded-full text-sm whitespace-nowrap">${data.pools.methods.title}</div>
+                        <div id="${data.pools.methods.id}" class="pool-zone drop-zone flex flex-wrap gap-3 mt-3 justify-center min-h-[60px] cursor-pointer" data-pool="${data.pools.methods.id}" ondrop="drop(event)" ondragover="allowDrop(event)" onclick="handleZoneClick(event)">`;
+            data.pools.methods.items.forEach(item => {
+                html += `<div id="${item.id}" class="draggable-item bg-white border-2 border-indigo-300 shadow-[0_4px_0_0_#a5b4fc] px-4 py-2 rounded-xl text-sm font-bold text-indigo-700 hover:border-indigo-500 hover:text-indigo-800 transition-colors" draggable="true" ondragstart="drag(event)" onclick="handleItemClick(event)" data-pool="${data.pools.methods.id}">${item.text}</div>`;
+            });
+            html += `</div></div>`;
+
+            // Meanings Pool
+            html += `<div class="bg-teal-50 border-4 border-dashed border-teal-200 rounded-[2rem] p-5 relative">
+                        <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-teal-200 text-teal-800 font-bold px-4 py-1 rounded-full text-sm whitespace-nowrap">${data.pools.meanings.title}</div>
+                        <div id="${data.pools.meanings.id}" class="pool-zone drop-zone flex flex-wrap gap-3 mt-3 justify-center min-h-[60px] cursor-pointer" data-pool="${data.pools.meanings.id}" ondrop="drop(event)" ondragover="allowDrop(event)" onclick="handleZoneClick(event)">`;
+            data.pools.meanings.items.forEach(item => {
+                html += `<div id="${item.id}" class="draggable-item bg-white border-2 border-teal-300 shadow-[0_4px_0_0_#5eead4] px-4 py-2 rounded-xl text-sm font-bold text-teal-700 hover:border-teal-500 hover:text-teal-800 transition-colors" draggable="true" ondragstart="drag(event)" onclick="handleItemClick(event)" data-pool="${data.pools.meanings.id}">${item.text}</div>`;
+            });
+            html += `</div></div>`;
+            
+            html += `</div>`; // End Pools grid
+
+            // Render Situations
+            html += `<div class="space-y-6">`;
+            data.situations.forEach(sit => {
+                html += `
+                    <div class="sit-question bg-amber-50/50 p-5 rounded-[2rem] border-2 border-amber-200 shadow-sm" data-id="${sit.id}">
+                        <p class="text-lg font-bold text-gray-800 mb-4 leading-relaxed">${sit.text}</p>
+                        <div class="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-center bg-white p-4 rounded-2xl border border-amber-100">
+                            
+                            <div class="flex items-center gap-3 w-full sm:w-auto">
+                                <span class="font-black text-indigo-500 whitespace-nowrap">Biện pháp:</span>
+                                <div class="drop-zone w-full sm:w-40 h-12 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center transition-colors cursor-pointer hover:bg-gray-100" data-correct="${sit.correctMethod}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" onclick="handleZoneClick(event)"></div>
+                            </div>
+                            
+                            <div class="hidden sm:block text-gray-300 font-bold">👉</div>
+                            
+                            <div class="flex items-center gap-3 w-full sm:w-auto">
+                                <span class="font-black text-teal-500 whitespace-nowrap">Ý nghĩa:</span>
+                                <div class="drop-zone w-full sm:w-56 h-12 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center transition-colors cursor-pointer hover:bg-gray-100" data-correct="${sit.correctMeaning}" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" onclick="handleZoneClick(event)"></div>
+                            </div>
+
+                            <div class="feedback ml-auto text-xl hidden"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        function renderMultipleChoice() {
+            const data = lessonData.multipleChoice;
+            let section = document.createElement('section');
+            section.className = "mt-12";
+            
+            let html = createSectionHeader(data.title);
+            
+            html += `<div class="space-y-8">`;
+            data.questions.forEach((q, index) => {
+                html += `<div class="mc-question bg-blue-50/30 p-6 rounded-[2rem] border-2 border-blue-100" data-id="${q.id}" data-correct="${q.correct}">
+                            <p class="font-extrabold text-xl mb-5 text-gray-800 leading-snug">${q.text}</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">`;
+                
+                q.options.forEach(opt => {
+                    html += `<div class="custom-radio">
+                                <input type="radio" id="${q.id}_${opt.value}" name="${q.id}" value="${opt.value}">
+                                <label for="${q.id}_${opt.value}" class="text-gray-700 hover:bg-pink-50 font-semibold text-base">
+                                    <span class="w-10 h-10 rounded-full border-2 border-gray-300 flex items-center justify-center mr-4 flex-shrink-0 radio-circle text-lg font-black bg-gray-50">
+                                        ${opt.value}
+                                    </span>
+                                    <span>${opt.text.substring(3)}</span> 
+                                </label>
+                            </div>`;
+                });
+                
+                html += `   </div>
+                            <div class="feedback mt-4 text-base font-bold bg-white px-4 py-2 rounded-xl inline-block border-2 shadow-sm hidden"></div>
+                        </div>`;
+            });
+            html += `</div>`;
+            
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        function renderTrueFalse() {
+            const data = lessonData.trueFalse;
+            let section = document.createElement('section');
+            section.className = "mt-12";
+            
+            let html = createSectionHeader(data.title, "Chọn ĐÚNG (✅) hoặc SAI (❌) cho mỗi nhận định nha.");
+            
+            html += `<div class="space-y-5">`;
+            data.questions.forEach((q, index) => {
+                html += `<div class="tf-question bg-white p-5 rounded-[2rem] border-2 border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:border-pink-300" data-id="${q.id}" data-correct="${q.correct}">
+                            <div class="flex items-start gap-3 flex-1">
+                                <span class="bg-pink-100 text-pink-600 font-black w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">${index + 1}</span>
+                                <p class="text-gray-800 font-bold text-lg leading-relaxed">${q.text}</p>
+                            </div>
+                            
+                            <div class="flex gap-4 flex-shrink-0 ml-11 md:ml-0 items-center">
+                                <div class="tf-radio">
+                                    <input type="radio" id="${q.id}_true" name="${q.id}" value="true">
+                                    <label for="${q.id}_true" class="tf-label-true">
+                                        <i class="fas fa-check mr-2"></i> ĐÚNG
+                                    </label>
+                                </div>
+                                <div class="tf-radio">
+                                    <input type="radio" id="${q.id}_false" name="${q.id}" value="false">
+                                    <label for="${q.id}_false" class="tf-label-false">
+                                        <i class="fas fa-times mr-2"></i> SAI
+                                    </label>
+                                </div>
+                                <div id="feedback_${q.id}" class="text-2xl ml-2 hidden w-8 text-center"></div>
+                            </div>
+                        </div>`;
+            });
+            html += `</div>`;
+            
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        function renderFillBlank() {
+            const data = lessonData.fillBlank;
+            let section = document.createElement('section');
+            section.className = "mt-12";
+            
+            const hintOptions = data.hints.split(', ').map(h => h.trim());
+            let optionsHtml = `<option value="" disabled selected>-- Chọn từ --</option>`;
+            [...hintOptions].sort(() => Math.random() - 0.5).forEach(hint => {
+                optionsHtml += `<option value="${hint}">${hint}</option>`;
+            });
+
+            let html = createSectionHeader(data.title, `Gợi ý chùm chìa khóa: <span class="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full font-black ml-2 shadow-sm">${data.hints}</span>`);
+            
+            html += `<div class="space-y-6 bg-gradient-to-br from-pink-50 to-purple-50 p-6 sm:p-8 rounded-[2.5rem] border-4 border-white shadow-inner">`;
+            data.sentences.forEach(s => {
+                html += `<div class="fb-sentence text-lg sm:text-xl font-bold leading-loose text-gray-700 bg-white/60 p-4 rounded-2xl" data-id="${s.id}" data-correct="${s.correct}">
+                            ${s.before} 
+                            <select id="select_${s.id}" class="inline-block border-2 border-pink-400 bg-white px-4 py-1.5 font-black text-pink-600 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200 shadow-sm mx-1 cursor-pointer transition-all hover:bg-pink-50">
+                                ${optionsHtml}
+                            </select> 
+                            ${s.after}
+                            <span class="feedback ml-2 hidden align-middle text-2xl"></span>
+                        </div>`;
+            });
+            html += `</div>`;
+            
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        function renderSummary() {
+            const data = lessonData.summary;
+            let section = document.createElement('section');
+            section.className = "mt-12";
+            
+            let html = `<div class="bg-gradient-to-br from-yellow-100 to-orange-100 p-8 rounded-[2.5rem] border-4 border-yellow-300 shadow-[0_8px_0_0_#fde047] relative overflow-hidden transform rotate-1 hover:rotate-0 transition-transform">
+                            <div class="absolute -top-10 -right-10 p-4 opacity-30 text-9xl">
+                                💡
+                            </div>
+                            <h3 class="text-2xl font-black text-orange-600 mb-6 relative z-10 flex items-center"><span class="text-4xl mr-3">📌</span> ${data.title}</h3>
+                            <ul class="space-y-4 relative z-10">`;
+            
+            data.points.forEach(point => {
+                html += `<li class="flex items-start bg-white/60 p-4 rounded-2xl">
+                            <span class="text-orange-500 mr-3 mt-1 text-xl"><i class="fas fa-star"></i></span>
+                            <span class="text-gray-800 font-bold text-lg">${point}</span>
+                        </li>`;
+            });
+            
+            html += `</ul></div>`;
+            section.innerHTML = html;
+            mainContainer.appendChild(section);
+        }
+
+        let draggedItem = null;
+        let activeSelectedItem = null; // Dành cho thao tác chạm trên mobile
+
+        // --- Logic Chạm (Tap) cho điện thoại ---
+        function handleItemClick(ev) {
+            ev.stopPropagation(); // Ngăn chặn trigger sự kiện click của drop zone bên dưới
+            const item = ev.currentTarget;
+            
+            // Nếu bấm vào item đang được chọn -> Bỏ chọn
+            if (activeSelectedItem === item) {
+                item.classList.remove('tap-selected');
+                activeSelectedItem = null;
+                return;
+            }
+
+            // Nếu đang chọn item khác -> Bỏ chọn item cũ, chọn item mới
+            if (activeSelectedItem) {
+                activeSelectedItem.classList.remove('tap-selected');
+            }
+
+            activeSelectedItem = item;
+            item.classList.add('tap-selected');
+        }
+
+        function handleZoneClick(ev) {
+            if (!activeSelectedItem) return; // Nếu chưa chọn thẻ nào thì không làm gì
+
+            const dropZone = ev.currentTarget;
+            
+            // Logic trả thẻ cũ về chỗ cũ (đối với phần ghép tình huống)
+            if (!dropZone.classList.contains('pool-zone')) {
+                if (dropZone.children.length > 0) {
+                    let existingItem = dropZone.children[0];
+                    let poolId = existingItem.getAttribute('data-pool');
+                    if (poolId) {
+                        document.getElementById(poolId).appendChild(existingItem);
+                    }
+                }
+            }
+            
+            // Di chuyển thẻ
+            dropZone.appendChild(activeSelectedItem);
+            
+            // Xóa trạng thái chọn
+            activeSelectedItem.classList.remove('tap-selected');
+            activeSelectedItem = null;
+        }
+
+        // --- Logic Kéo thả (Drag & Drop) truyền thống ---
+        function drag(ev) {
+            draggedItem = ev.target;
+            ev.dataTransfer.setData("text", ev.target.id);
+            setTimeout(() => { ev.target.classList.add('opacity-50', 'scale-95'); }, 0);
+            
+            // Hủy trạng thái click tap nếu người dùng kéo
+            if(activeSelectedItem) {
+                activeSelectedItem.classList.remove('tap-selected');
+                activeSelectedItem = null;
+            }
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault(); // Cho phép thả thẻ vào vùng này
+        }
+
+        function dragEnter(ev) {
+            ev.preventDefault();
+            let dropZone = ev.target.closest('.drop-zone');
+            if (dropZone) {
+                dropZone.classList.add('drag-over'); // Thêm hiệu ứng sáng viền khi kéo thẻ vào
+            }
+        }
+
+        function dragLeave(ev) {
+            let dropZone = ev.target.closest('.drop-zone');
+            if (dropZone) {
+                dropZone.classList.remove('drag-over');
+            }
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            let dropZone = ev.target.closest('.drop-zone');
+            
+            if (dropZone && draggedItem) {
+                dropZone.classList.remove('drag-over');
+                
+                // Logic to handle single-item slots (for Situational Matching)
+                if (!dropZone.classList.contains('pool-zone')) {
+                    // If the slot already has an item, return the old item to its original pool
+                    if (dropZone.children.length > 0) {
+                        let existingItem = dropZone.children[0];
+                        let poolId = existingItem.getAttribute('data-pool');
+                        if (poolId) {
+                            document.getElementById(poolId).appendChild(existingItem);
+                        }
+                    }
+                }
+                
+                draggedItem.classList.remove('opacity-50', 'scale-95');
+                dropZone.appendChild(draggedItem);
+            }
+            if(draggedItem) {
+                draggedItem.classList.remove('opacity-50', 'scale-95');
+            }
+            draggedItem = null;
+        }
+
+        function shuffleChildren(container) {
+            for (let i = container.children.length; i >= 0; i--) {
+                container.appendChild(container.children[Math.random() * i | 0]);
+            }
+        }
+
+        function gradeWorksheet() {
+            let totalPoints = 0;
+            let earnedPoints = 0;
+
+            // 1. Grade Part 1 Drag & Drop (1 point per item = 8)
+            const ddItems = document.querySelectorAll('#cat1-zone .draggable-item, #cat2-zone .draggable-item, #dd-pool .draggable-item');
+            ddItems.forEach(item => {
+                if(item.getAttribute('data-correct-target')) { // Only grade items meant for part 1
+                    totalPoints++;
+                    const parentZone = item.closest('.drop-zone').getAttribute('data-target');
+                    const correctTarget = item.getAttribute('data-correct-target');
+                    
+                    item.classList.remove('bg-emerald-100', 'border-emerald-500', 'bg-rose-100', 'border-rose-500', 'text-emerald-700', 'text-rose-700');
+                    
+                    if (parentZone === correctTarget) {
+                        earnedPoints++;
+                        item.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-800');
+                    } else if (parentZone !== 'pool') {
+                        item.classList.add('bg-rose-100', 'border-rose-500', 'text-rose-800');
+                    }
+                }
+            });
+
+            // 2. Grade Part 2 Situational Match (1 pt for method, 1 pt for meaning = 6 pts)
+            const sitQs = document.querySelectorAll('.sit-question');
+            sitQs.forEach(q => {
+                const slots = q.querySelectorAll('.drop-zone');
+                slots.forEach(slot => {
+                    totalPoints++;
+                    const correctId = slot.getAttribute('data-correct');
+                    const feedbackDiv = q.querySelector('.feedback');
+                    
+                    slot.classList.remove('border-emerald-500', 'bg-emerald-50', 'border-rose-500', 'bg-rose-50');
+                    
+                    if (slot.children.length > 0) {
+                        const childId = slot.children[0].id;
+                        if (childId === correctId) {
+                            earnedPoints++;
+                            slot.classList.add('border-emerald-500', 'bg-emerald-50');
+                        } else {
+                            slot.classList.add('border-rose-500', 'bg-rose-50');
+                        }
+                    } else {
+                        slot.classList.add('border-rose-500', 'bg-rose-50'); // Empty is wrong
+                    }
+                });
+                
+                // Visual feedback for the whole situation row
+                const feedbackDiv = q.querySelector('.feedback');
+                let correctCount = 0;
+                slots.forEach(s => {
+                    if(s.children.length > 0 && s.children[0].id === s.getAttribute('data-correct')) correctCount++;
+                });
+                
+                if(correctCount === 2) {
+                    feedbackDiv.innerHTML = '✅';
+                } else {
+                    feedbackDiv.innerHTML = '❌';
+                }
+                feedbackDiv.classList.remove('hidden');
+            });
+
+            // 3. Grade Part 3 Multiple Choice (1 point per question = 3)
+            const mcQs = document.querySelectorAll('.mc-question');
+            mcQs.forEach(q => {
+                totalPoints++;
+                const qId = q.getAttribute('data-id');
+                const correctAns = q.getAttribute('data-correct');
+                const selected = document.querySelector(`input[name="${qId}"]:checked`);
+                const feedback = q.querySelector('.feedback');
+                
+                q.querySelectorAll('label').forEach(lbl => lbl.classList.remove('correct-answer', 'wrong-answer'));
+
+                if (selected) {
+                    const selectedLabel = selected.nextElementSibling;
+                    if (selected.value === correctAns) {
+                        earnedPoints++;
+                        selectedLabel.classList.add('correct-answer');
+                        feedback.innerHTML = `<i class="fas fa-check text-emerald-500 mr-1"></i> Chính xác!`;
+                        feedback.classList.remove('hidden', 'border-rose-200', 'text-rose-600');
+                        feedback.classList.add('border-emerald-200', 'text-emerald-700', 'bg-emerald-50');
+                    } else {
+                        selectedLabel.classList.add('wrong-answer');
+                        document.querySelector(`input[id="${qId}_${correctAns}"]`).nextElementSibling.classList.add('correct-answer');
+                        feedback.innerHTML = `<i class="fas fa-times text-rose-500 mr-1"></i> Sai rồi. Đáp án đúng: ${correctAns}.`;
+                        feedback.classList.remove('hidden', 'border-emerald-200', 'text-emerald-700');
+                        feedback.classList.add('border-rose-200', 'text-rose-700', 'bg-rose-50');
+                    }
+                } else {
+                    document.querySelector(`input[id="${qId}_${correctAns}"]`).nextElementSibling.classList.add('correct-answer');
+                }
+            });
+
+            // 4. Grade Part 4 True/False (1 point per question = 4)
+            const tfQs = document.querySelectorAll('.tf-question');
+            tfQs.forEach(q => {
+                totalPoints++;
+                const qId = q.getAttribute('data-id');
+                const correctAns = q.getAttribute('data-correct');
+                const selected = document.querySelector(`input[name="${qId}"]:checked`);
+                const feedbackDiv = document.getElementById(`feedback_${qId}`);
+                
+                // Clear custom grading styles
+                const labels = q.querySelectorAll('label');
+                labels.forEach(lbl => {
+                    lbl.classList.remove('graded-correct', 'graded-wrong');
+                });
+
+                if (selected) {
+                    const selectedLabel = selected.nextElementSibling;
+                    if (selected.value === correctAns) {
+                        earnedPoints++;
+                        selectedLabel.classList.add('graded-correct');
+                        feedbackDiv.innerHTML = `✅`;
+                    } else {
+                        selectedLabel.classList.add('graded-wrong');
+                        document.querySelector(`input[id="${qId}_${correctAns}"]`).nextElementSibling.classList.add('graded-correct');
+                        feedbackDiv.innerHTML = `❌`;
+                    }
+                    feedbackDiv.classList.remove('hidden');
+                } else {
+                    document.querySelector(`input[id="${qId}_${correctAns}"]`).nextElementSibling.classList.add('graded-correct');
+                }
+            });
+
+            // 5. Grade Part 5 Fill Blank (1 point per blank = 4)
+            const fbSentences = document.querySelectorAll('.fb-sentence');
+            fbSentences.forEach(s => {
+                totalPoints++;
+                const sId = s.getAttribute('data-id');
+                const correctAns = s.getAttribute('data-correct');
+                const selectEl = document.getElementById(`select_${sId}`);
+                const feedback = s.querySelector('.feedback');
+                
+                selectEl.classList.remove('border-emerald-500', 'text-emerald-700', 'border-rose-500', 'text-rose-700', 'bg-emerald-50', 'bg-rose-50');
+
+                if (selectEl.value === correctAns) {
+                    earnedPoints++;
+                    selectEl.classList.add('border-emerald-500', 'text-emerald-700', 'bg-emerald-50');
+                    feedback.innerHTML = `🎉`;
+                } else if (selectEl.value !== "") {
+                    selectEl.classList.add('border-rose-500', 'text-rose-700', 'bg-rose-50');
+                    feedback.innerHTML = `🥺 <span class="text-sm font-bold text-gray-500">(${correctAns})</span>`;
+                } else {
+                    selectEl.classList.add('border-rose-500');
+                    feedback.innerHTML = `🥺 <span class="text-sm font-bold text-gray-500">(${correctAns})</span>`;
+                }
+                feedback.classList.remove('hidden');
+            });
+
+            showResult(earnedPoints, totalPoints);
+        }
+
+        function showResult(earned, total) {
+            const modal = document.getElementById('result-modal');
+            const scoreEl = document.getElementById('result-score');
+            const iconEl = document.getElementById('result-icon');
+            const messageEl = document.getElementById('result-message');
+            
+            const percentage = Math.round((earned / total) * 100);
+            
+            scoreEl.textContent = `${earned} / ${total}`;
+            
+            if (percentage >= 90) {
+                iconEl.innerHTML = '🏆';
+                messageEl.textContent = 'Xuất sắc luôn! Điểm 10 không có nhưng! 🥰';
+            } else if (percentage >= 70) {
+                iconEl.innerHTML = '🌟';
+                messageEl.textContent = 'Rất giỏi! Bạn nắm bài khá chắc rồi đấy! 👍';
+            } else if (percentage >= 50) {
+                iconEl.innerHTML = '💪';
+                messageEl.textContent = 'Cố gắng một chút nữa nha! Đọc lại ghi nhớ cuối bài nè! 😉';
+            } else {
+                iconEl.innerHTML = '📚';
+                messageEl.textContent = 'Oops! Hình như bạn quên bài rồi, xem lại kỹ nhé! 🥺';
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').classList.add('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', initApp);
+
+    </script>
+</body>
+</html>
